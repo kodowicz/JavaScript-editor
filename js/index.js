@@ -14,10 +14,39 @@ const keys = {
   dash: 191
 }
 
+const startCursorPoint = minimumCursorPosition();
 let cursorPosition = {
   top: 0,
   left: 0
 }
+let shiftSizes = {
+  horizontal: getShiftSizes().horizontalShift,
+  vertical: getShiftSizes().verticalShift
+}
+
+function getShiftSizes () {
+  const tag = document.querySelector(".tag");
+  const tagLength = tag.innerText.length;
+  const getRect = tag.getBoundingClientRect();
+  const horizontalShift = getRect.width / tagLength;
+  const verticalShift = getRect.height;
+
+  return {
+    horizontalShift,
+    verticalShift
+  }
+}
+
+function minimumCursorPosition () {
+  const element = document.querySelector(".line__code");
+  const coords = element.getBoundingClientRect();
+
+  return {
+    top: coords.top,
+    left: coords.left
+  }
+}
+
 
 // flashing cursor
 function flashUpCursor () {
@@ -129,8 +158,10 @@ function findTheLatestTag (directionY, directionX) {
     }
 
     if (nextTag) {
-      nextTagPosition = nextTag.getBoundingClientRect();
-      setCursorPosition(nextTagPosition.top, nextTagPosition.left);
+      nextTagPosition = {
+        top: nextTag.getBoundingClientRect().top,
+        left: nextTag.getBoundingClientRect().left
+      }
     }
 
   // left key
@@ -141,14 +172,23 @@ function findTheLatestTag (directionY, directionX) {
       }
     }
 
-    nextTagPosition = nextTag.getBoundingClientRect();
-    setCursorPosition(nextTagPosition.top, nextTagPosition.right);
+    nextTagPosition = {
+      top: nextTag.getBoundingClientRect().top,
+      left: nextTag.getBoundingClientRect().right
+    }
 
   // down key
   } else if (directionY === 1 && directionX === 0) {
     const lines = document.querySelectorAll(".line");
-    const currentLine = prevTag.parentNode.parentNode;
+    let currentLine;
     let nextLine;
+    let returnPosition;
+
+    if (prevTag.parentNode.matches(".line")) {
+      currentLine = prevTag.parentNode
+    } else {
+      currentLine = prevTag.parentNode.parentNode
+    }
 
     for (let [i, line] of lines.entries()) {
       if (line == currentLine) {
@@ -156,16 +196,33 @@ function findTheLatestTag (directionY, directionX) {
       }
     }
 
-    nextTag = nextLine.lastElementChild.lastElementChild;
-    nextTagPosition = nextTag.getBoundingClientRect();
-    setCursorPosition(nextTagPosition.top, nextTagPosition.right);
+    if (nextLine) {
+      nextTag = nextLine.lastElementChild.lastElementChild;
+      nextTagPosition = {
+        top: nextTag.getBoundingClientRect().top,
+        left: nextTag.getBoundingClientRect().right
+      }
+
+    } else {
+      nextTag = currentLine.lastElementChild.lastElementChild;
+      nextTagPosition = {
+        top: nextTag.getBoundingClientRect().top,
+        left: nextTag.getBoundingClientRect().right
+      }
+    }
   }
 
   // up key
   else if (directionY === -1 && directionX === 0) {
     const lines = document.querySelectorAll(".line");
-    const currentLine = prevTag.parentNode.parentNode;
+    let currentLine;
     let nextLine;
+
+    if (prevTag.parentNode.matches(".line")) {
+      currentLine = prevTag.parentNode
+    } else {
+      currentLine = prevTag.parentNode.parentNode
+    }
 
     for (let [i, line] of lines.entries()) {
       if (line == currentLine) {
@@ -174,11 +231,65 @@ function findTheLatestTag (directionY, directionX) {
     }
 
     nextTag = nextLine.lastElementChild.lastElementChild;
-    nextTagPosition = nextTag.getBoundingClientRect();
-    setCursorPosition(nextTagPosition.top, nextTagPosition.right);
+
+    nextTagPosition = {
+      top: nextTag.getBoundingClientRect().top,
+      left: nextTag.getBoundingClientRect().right
+    }
   }
+
+  return nextTagPosition;
+}
+
+function setCursorPositionAtKeydown (directionY, directionX) {
+  const nextCursorPosition = {
+    top: cursorPosition.top + (shiftSizes.vertical * directionY),
+    left: cursorPosition.left + (shiftSizes.horizontal * directionX)
+  }
+
+  currentTag = document.elementFromPoint(nextCursorPosition.left, nextCursorPosition.top);
+
+  if (currentTag) {
+    if (currentTag.matches(".tag")) {
+      setCursorPosition(nextCursorPosition.top, nextCursorPosition.left);
+
+    } else {
+      let nextTag = findTheLatestTag(directionY, directionX);
+      setCursorPosition(nextTag.top, nextTag.left);
+    }
+
+  } else {
+    setCursorPosition(startCursorPoint.top, startCursorPoint.left);
+  }
+}
+
+
+
+function changeCursorAtKeydown (event) {
+  switch (event.keyCode) {
+    case keys.down:
+      setCursorPositionAtKeydown(1, 0);
+      break;
+    case keys.up:
+      setCursorPositionAtKeydown(-1, 0);
+      break;
+    case keys.left:
+      setCursorPositionAtKeydown(0, -1);
+      break;
+    case keys.right:
+      setCursorPositionAtKeydown(0, 1);
+      break;
+    case keys.enter:
+      createNewLine();
+      break;
+    default:
+      break;
+  }
+
+  reactivateCursor();
 }
 
 
 codeArea.addEventListener("click", changeCursorPosition);
 window.addEventListener("click", activateEditor);
+window.addEventListener("keydown", changeCursorAtKeydown);
