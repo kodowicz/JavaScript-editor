@@ -14,6 +14,8 @@ const keys = {
   dash: 191
 }
 
+let lineNumber = getLineNumber();
+let currentTag;
 const startCursorPoint = minimumCursorPosition();
 let cursorPosition = {
   top: 0,
@@ -37,6 +39,19 @@ function getShiftSizes () {
   }
 }
 
+function getLineNumber () {
+  const numbers = document.querySelectorAll(".line__number");
+  let lastNumber;
+
+  for (let [i, number] of numbers.entries()) {
+    if (!numbers[i+1]) {
+      lastNumber = number
+    }
+  }
+
+  return Number(lastNumber.textContent)
+}
+
 function minimumCursorPosition () {
   const element = document.querySelector(".line__code");
   const coords = element.getBoundingClientRect();
@@ -46,6 +61,7 @@ function minimumCursorPosition () {
     left: coords.left
   }
 }
+
 
 
 // flashing cursor
@@ -263,7 +279,50 @@ function setCursorPositionAtKeydown (directionY, directionX) {
   }
 }
 
+// create new line
+function createElement (tag, className, content) {
+  const element = document.createElement(tag);
+  element.classList.add(className);
 
+  if (content) {
+    element.textContent = content;
+  }
+
+  return element;
+}
+
+function getCurrentLine () {
+  const lines = document.querySelectorAll(".line");
+  const currentTag = document.elementFromPoint(cursorPosition.left, cursorPosition.top);
+  let currentLine;
+
+  for (let line of lines) {
+    if (line === currentTag.parentNode.parentNode) {
+      currentLine = line;
+    }
+  }
+
+  return currentLine;
+}
+
+function createNewLine () {
+  const currentLine = getCurrentLine();
+  let coords;
+  lineNumber += 1;
+
+  const newLine = createElement("div", "line");
+  const number = createElement("span", "line__number", lineNumber);
+  const code = createElement("div", "line__code");
+  const tag = createElement("span", "tag"); // if was some code: plus tabs
+
+  currentLine.insertAdjacentElement("afterend", newLine);
+  newLine.append(number);
+  newLine.append(code);
+  code.append(tag);
+
+  coords = code.getBoundingClientRect();
+  setCursorPosition(coords.top, coords.left);
+}
 
 function changeCursorAtKeydown (event) {
   switch (event.keyCode) {
