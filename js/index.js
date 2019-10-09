@@ -161,9 +161,14 @@ function changeCursorPosition (event) {
 
 function findTheLatestTag (directionY, directionX) {
   const allTags = document.querySelectorAll(".tag");
-  const prevTag = document.elementFromPoint(cursorPosition.left, cursorPosition.top);
+  let prevTag = document.elementFromPoint(cursorPosition.left, cursorPosition.top);
   let nextTag;
   let nextTagPosition;
+
+  // if a line was empty
+  if (prevTag.matches(".line__code")) {
+    prevTag = prevTag.lastElementChild;
+  }
 
   // right key
   if (directionY === 0 && directionX === 1) {
@@ -293,8 +298,13 @@ function createElement (tag, className, content) {
 
 function getCurrentLine () {
   const lines = document.querySelectorAll(".line");
-  const currentTag = document.elementFromPoint(cursorPosition.left, cursorPosition.top);
+  let currentTag = document.elementFromPoint(cursorPosition.left, cursorPosition.top);
   let currentLine;
+
+  // if a line was empty
+  if (currentTag.matches(".line__code")) {
+    currentTag = currentTag.firstElementChild;
+  }
 
   for (let line of lines) {
     if (line === currentTag.parentNode.parentNode) {
@@ -305,16 +315,34 @@ function getCurrentLine () {
   return currentLine;
 }
 
+function changeLinesNumbers (currentLine, lineNumber) {
+  const lines = document.querySelectorAll(".line");
+  let nextNumber = lineNumber;
+  let nextLine;
+
+  for (let line of lines) {
+    if (nextLine) {
+      nextLine.firstElementChild.innerText = nextNumber;
+
+      nextNumber += 1;
+      nextLine = line.nextElementSibling;
+    }
+    if (line === currentLine) {
+      nextLine = line.nextElementSibling;
+    }
+  }
+}
+
 function createNewLine () {
   const currentLine = getCurrentLine();
   let coords;
-  lineNumber += 1;
+  const lineNumber = currentLine.firstElementChild.innerText;
+  const nextNumber = Number.parseInt(lineNumber) + 1;
 
   const newLine = createElement("div", "line");
-  const number = createElement("span", "line__number", lineNumber);
+  const number = createElement("span", "line__number", nextNumber);
   const code = createElement("div", "line__code");
   const tag = createElement("span", "tag"); // if was some code: plus tabs
-
   currentLine.insertAdjacentElement("afterend", newLine);
   newLine.append(number);
   newLine.append(code);
@@ -322,6 +350,7 @@ function createNewLine () {
 
   coords = code.getBoundingClientRect();
   setCursorPosition(coords.top, coords.left);
+  changeLinesNumbers(currentLine, nextNumber);
 }
 
 function changeCursorAtKeydown (event) {
